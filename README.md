@@ -1,16 +1,30 @@
 # GitOps-Only Infrastructure as Software
 
-> **Zero manual changes. Full audit trail. Complete GitOps governance for regulated AWS environments.**
+> **Write Code ➔ Push to GitHub ➔ Auto-Deploy ➔ Never click around in AWS again.**
 
 ---
 
-## What Is This Project
+## 💻 What Does This Project Do? (The Simple Workflow)
+
+This project completely automates how you build and manage cloud infrastructure. Instead of manually clicking buttons in the AWS Console or running terminal commands, here is exactly how you work:
+
+1. **You write code:** Need a new database or server? You write it in code (Terraform) and make a Pull Request (PR) on GitHub.
+2. **The system checks it:** A tool called **Atlantis** instantly reads your PR and comments: *"Here is exactly what AWS changes I am going to make."*
+3. **Your team approves:** Another developer looks at your code and clicks "Approve".
+4. **It deploys on its own:** As soon as you merge the PR to the `main` branch, Atlantis officially applies your changes to AWS. No manual deployment needed.
+5. **It stays perfect:** A tool called **ArgoCD** constantly watches your code. If someone tries to cheat and manually change a setting in the AWS Console, the system instantly catches it and **changes it back** to match your code.
+
+**In short:** Your GitHub code is the absolute boss. No manual changes are allowed, meaning zero mistakes and a perfect history of who changed what!
+
+---
+
+## 👩‍💻 For the Techies (What Is It Actually?)
 
 This project is a **complete, production-ready GitOps platform** that treats infrastructure as software rather than as a collection of manually configured cloud resources. It is a reference architecture for platform engineering teams who want to eliminate every form of manual infrastructure change — no AWS Console clicks, no ad-hoc `kubectl` commands, no secrets pasted into chat windows.
 
 Built for **Amazon Web Services (AWS)**, the platform orchestrates infrastructure through **Terraform**, enforces review and policy through **Atlantis**, and continuously reconciles Kubernetes state through **ArgoCD**. Secrets are encrypted at rest in Git using **Mozilla SOPS** with **AWS KMS**, then decrypted automatically inside the cluster by a **Config Management Plugin (CMP)**. Every resource carries a Git commit SHA as a tag. Every change is logged for seven years. Every deviation from the declared state is detected within fifteen minutes.
 
-This is not a tutorial or a proof-of-concept. It is a hardened, opinionated control plane designed for **Saudi enterprise cloud teams** — including regulated sectors such as banking, telecom, oil & gas, and government — where the Saudi Central Bank (SAMA) Cyber Security Framework mandates immutable audit trails, encryption at rest and in transit, and strict access controls.
+This is a hardened, opinionated control plane designed for regulated enterprise cloud teams where cybersecurity frameworks mandate immutable audit trails, encryption, and strict access controls.
 
 ---
 
@@ -32,13 +46,13 @@ This is not a tutorial or a proof-of-concept. It is a hardened, opinionated cont
 
 ### Problems It Solves
 
-| Problem | How This Project Solves It |
-|---------|---------------------------|
-| Configuration drift | Drift detection Lambda compares Terraform state to live AWS resources every 15 minutes |
-| Untracked manual changes | Kyverno blocks manual `kubectl create secret`; Atlantis locks prevent concurrent Terraform applies |
-| Secret sprawl | SOPS + KMS encrypts secrets in Git; External Secrets Operator syncs them to clusters |
+| Problem                     | How This Project Solves It                                                                            |
+| --------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Configuration drift         | Drift detection Lambda compares Terraform state to live AWS resources every 15 minutes                |
+| Untracked manual changes    | Kyverno blocks manual `kubectl create secret`; Atlantis locks prevent concurrent Terraform applies    |
+| Secret sprawl               | SOPS + KMS encrypts secrets in Git; External Secrets Operator syncs them to clusters                  |
 | Lack of rollback capability | ArgoCD selfHeal reverts manual K8s changes; automated Git revert Lambda handles staging sync failures |
-| Compliance audit failures | CloudTrail + S3 Object Lock + 7-year retention provides immutable evidence for every change |
+| Compliance audit failures   | CloudTrail + S3 Object Lock + 7-year retention provides immutable evidence for every change           |
 
 ---
 
@@ -175,17 +189,18 @@ The `gitops/` directory is the **single source of truth** for cluster state. The
 
 Before you begin, ensure you have the following tools installed and configured:
 
-| Tool | Minimum Version | Purpose |
-|------|----------------|---------|
-| AWS CLI | 2.13+ | Interact with AWS APIs |
-| Terraform | 1.7.0+ | Infrastructure provisioning |
-| kubectl | 1.28+ | Kubernetes cluster interaction |
-| Helm | 3.13+ | Package manager for Kubernetes |
-| SOPS | 3.8+ | Encrypt secrets for Git |
-| Conftest | 0.49+ | Policy validation for Terraform plans |
-| Python | 3.11+ | Drift detection and docs generation scripts |
+| Tool      | Minimum Version | Purpose                                     |
+| --------- | --------------- | ------------------------------------------- |
+| AWS CLI   | 2.13+           | Interact with AWS APIs                      |
+| Terraform | 1.7.0+          | Infrastructure provisioning                 |
+| kubectl   | 1.28+           | Kubernetes cluster interaction              |
+| Helm      | 3.13+           | Package manager for Kubernetes              |
+| SOPS      | 3.8+            | Encrypt secrets for Git                     |
+| Conftest  | 0.49+           | Policy validation for Terraform plans       |
+| Python    | 3.11+           | Drift detection and docs generation scripts |
 
 Optional but recommended:
+
 - Atlantis CLI (for local workflow testing)
 - GitHub CLI (`gh`) for webhook configuration
 - tflint and checkov for local validation
@@ -235,6 +250,7 @@ make bootstrap
 ```
 
 This idempotently creates:
+
 - S3 bucket for Terraform state (versioning, encryption, public access block)
 - DynamoDB table for state locking
 - KMS key for state encryption
@@ -258,6 +274,7 @@ make bootstrap-platform
 ```
 
 For subsequent updates, use:
+
 ```bash
 make plan
 make apply
@@ -266,6 +283,7 @@ make apply
 ### Step 5: Configure GitHub Webhook for Atlantis
 
 In your GitHub repository settings, add a webhook:
+
 - **Payload URL**: `https://atlantis.my-platform.dev.example.com/events`
 - **Content type**: `application/json`
 - **Secret**: The value stored in AWS Secrets Manager (`atlantis/webhook-secret`)
@@ -307,11 +325,11 @@ make drift-check
 
 ### Plan Requirements vs Apply Requirements
 
-| Environment | Plan Requirements | Apply Requirements |
-|-------------|-------------------|-------------------|
-| dev | approved | approved, mergeable |
-| staging | approved | approved, mergeable |
-| prod | approved, mergeable | approved, mergeable, undiverged |
+| Environment | Plan Requirements   | Apply Requirements              |
+| ----------- | ------------------- | ------------------------------- |
+| dev         | approved            | approved, mergeable             |
+| staging     | approved            | approved, mergeable             |
+| prod        | approved, mergeable | approved, mergeable, undiverged |
 
 ### Custom Workflow
 
@@ -413,30 +431,32 @@ make break-glass -- --reason="Emergency cert rotation" --user="alice" --approver
 
 ### Conftest Policies (Terraform Plans)
 
-| Policy Name | What It Blocks | Severity | Example Violation |
-|-------------|---------------|----------|-------------------|
-| `no_public_s3.rego` | Public S3 ACLs or policies | Critical | `acl = "public-read"` |
-| `encryption_required.rego` | Unencrypted EBS, RDS, S3 | Critical | `encrypted = false` on EBS |
-| `required_tags.rego` | Missing mandatory tags | High | No `CostCenter` tag |
-| `mandatory_annotations.rego` | Missing K8s annotations | Medium | No `description` on manifest |
-| `deny_root_account.rego` | Root account in IAM policy | Critical | `Principal = "*"` |
+| Policy Name                  | What It Blocks             | Severity | Example Violation            |
+| ---------------------------- | -------------------------- | -------- | ---------------------------- |
+| `no_public_s3.rego`          | Public S3 ACLs or policies | Critical | `acl = "public-read"`        |
+| `encryption_required.rego`   | Unencrypted EBS, RDS, S3   | Critical | `encrypted = false` on EBS   |
+| `required_tags.rego`         | Missing mandatory tags     | High     | No `CostCenter` tag          |
+| `mandatory_annotations.rego` | Missing K8s annotations    | Medium   | No `description` on manifest |
+| `deny_root_account.rego`     | Root account in IAM policy | Critical | `Principal = "*"`            |
 
 ### Kyverno Policies (Kubernetes Admission)
 
-| Policy Name | What It Blocks | Scope | Exception Process |
-|-------------|---------------|-------|-------------------|
-| `require-gitops-annotations` | Resources without ArgoCD tracking ID | All namespaces (except system) | Add annotation or request exclusion via PR |
-| `block-manual-secrets` | `kubectl create secret` | All namespaces (except external-secrets) | Use ExternalSecret or SOPS manifest |
-| `enforce-resource-descriptions` | `metadata.annotations.description < 10 chars` | Deployments, Services, ConfigMaps | Fix annotation length |
+| Policy Name                     | What It Blocks                                | Scope                                    | Exception Process                          |
+| ------------------------------- | --------------------------------------------- | ---------------------------------------- | ------------------------------------------ |
+| `require-gitops-annotations`    | Resources without ArgoCD tracking ID          | All namespaces (except system)           | Add annotation or request exclusion via PR |
+| `block-manual-secrets`          | `kubectl create secret`                       | All namespaces (except external-secrets) | Use ExternalSecret or SOPS manifest        |
+| `enforce-resource-descriptions` | `metadata.annotations.description < 10 chars` | Deployments, Services, ConfigMaps        | Fix annotation length                      |
 
 ### Adding a New Policy
 
 **Conftest (Terraform)**:
+
 1. Create `policies/conftest/terraform/my_policy.rego`
 2. Write a `deny[msg]` rule using the `input.resource_changes` structure
 3. Run `conftest test tfplan.json --policy policies/conftest/terraform`
 
 **Kyverno (Kubernetes)**:
+
 1. Create `kubernetes/kyverno/policies/my-policy.yaml`
 2. Define `validationFailureAction: Enforce` or `Audit`
 3. ArgoCD will auto-sync it to the cluster
@@ -448,6 +468,7 @@ make break-glass -- --reason="Emergency cert rotation" --user="alice" --approver
 ### How the Lambda Works
 
 The drift detection Lambda (`scripts/drift-detector.py`) runs on an EventBridge schedule:
+
 1. Downloads the Terraform state from the S3 backend
 2. Extracts resource attributes from the state JSON
 3. Queries live AWS resources via Boto3 (`describe_instances`, `describe_security_groups`, etc.)
@@ -518,6 +539,7 @@ ArgoCD's automated sync with `selfHeal: true` detects any manual change to a man
 ### Automated Lambda Revert for Staging
 
 When ArgoCD reports a sync failure to SNS, the rollback Lambda:
+
 1. Receives the SNS event
 2. Calls the GitHub API to revert the commit that caused the failure
 3. Creates a PagerDuty incident with commit details
@@ -578,13 +600,13 @@ Drift detection Lambda uses reserved concurrency (default: 5) to prevent runaway
 
 ### Estimated Monthly Cost Breakdown (eu-west-1)
 
-| Environment | EKS | NAT GWs | Atlantis | ArgoCD | Total (est.) |
-|-------------|-----|---------|----------|--------|--------------|
-| dev | $150 | $100 | $50 | $30 | ~$330 |
-| staging | $200 | $150 | $50 | $30 | ~$430 |
-| prod | $400 | $300 | $100 | $50 | ~$850 |
+| Environment | EKS  | NAT GWs | Atlantis | ArgoCD | Total (est.) |
+| ----------- | ---- | ------- | -------- | ------ | ------------ |
+| dev         | $150 | $100    | $50      | $30    | ~$330        |
+| staging     | $200 | $150    | $50      | $30    | ~$430        |
+| prod        | $400 | $300    | $100     | $50    | ~$850        |
 
-*Excludes workload-specific compute and data transfer.*
+_Excludes workload-specific compute and data transfer._
 
 ---
 
@@ -592,19 +614,19 @@ Drift detection Lambda uses reserved concurrency (default: 5) to prevent runaway
 
 ### Atlantis Plan Fails
 
-| Symptom | Cause | Fix |
-|---------|-------|-----|
-| `Error acquiring the state lock` | Stale DynamoDB lock | `terraform force-unlock <ID>` |
-| `module not found` | Wrong module path in PR | Ensure module source path is correct |
-| `webhook not received` | GitHub webhook misconfigured | Verify payload URL and secret in repo settings |
+| Symptom                          | Cause                        | Fix                                            |
+| -------------------------------- | ---------------------------- | ---------------------------------------------- |
+| `Error acquiring the state lock` | Stale DynamoDB lock          | `terraform force-unlock <ID>`                  |
+| `module not found`               | Wrong module path in PR      | Ensure module source path is correct           |
+| `webhook not received`           | GitHub webhook misconfigured | Verify payload URL and secret in repo settings |
 
 ### ArgoCD Sync Stuck
 
-| Symptom | Cause | Fix |
-|---------|-------|-----|
-| `ComparisonError` | SOPS decryption failure | Check KMS key policy and CMP init container logs |
-| `Unknown` | CMP plugin error | Check repo-server logs for SOPS/Helm errors |
-| `SyncFailed` | Network policy blocking repo-server | Allow repo-server egress to GitHub and KMS |
+| Symptom           | Cause                               | Fix                                              |
+| ----------------- | ----------------------------------- | ------------------------------------------------ |
+| `ComparisonError` | SOPS decryption failure             | Check KMS key policy and CMP init container logs |
+| `Unknown`         | CMP plugin error                    | Check repo-server logs for SOPS/Helm errors      |
+| `SyncFailed`      | Network policy blocking repo-server | Allow repo-server egress to GitHub and KMS       |
 
 ### Conftest Policy Failure
 
@@ -664,6 +686,7 @@ Or add a `clusterRoles` exclusion for the `argocd-application-controller` servic
 ### Logging
 
 All break-glass actions are logged to:
+
 - CloudTrail (AWS API calls)
 - CloudWatch Logs (`/aws/platform/break-glass`)
 - Slack `#incidents` thread
@@ -672,6 +695,7 @@ All break-glass actions are logged to:
 ### Post-Incident Reconciliation
 
 Within 24 hours of break-glass access:
+
 1. Run `terraform plan` to identify differences
 2. Use `terraform import` for any manually created resources
 3. Apply Terraform to restore Git as the source of truth
@@ -681,15 +705,15 @@ Within 24 hours of break-glass access:
 
 ## SAMA Compliance Mapping
 
-| SAMA Control | Platform Component | Evidence Location |
-|-------------|-------------------|-------------------|
-| 3-1-1 Governance | Git + Atlantis | Git commit history, PR approvals |
-| 3-2-1 Risk Assessment | Checkov + Conftest | `.github/workflows/terraform-validation.yml` |
-| 3-3-1 Operations | ArgoCD self-healing | `gitops/argocd-apps/self-management/` |
-| 3-4-1 Access Control | IRSA + Atlantis locks | `terraform/modules/eks_gitops/`, `terraform/modules/atlantis/` |
-| 3-5-1 Asset Inventory | Required tags policy | `policies/conftest/terraform/required_tags.rego` |
-| 3-6-1 Data Encryption | SOPS + KMS | `gitops/sops/.sops.yaml`, `terraform/modules/secrets_sops/` |
-| 3-7-1 Cloud Security | Private EKS, VPC Flow Logs | `terraform/modules/eks_gitops/`, `terraform/modules/networking/` |
+| SAMA Control          | Platform Component         | Evidence Location                                                |
+| --------------------- | -------------------------- | ---------------------------------------------------------------- |
+| 3-1-1 Governance      | Git + Atlantis             | Git commit history, PR approvals                                 |
+| 3-2-1 Risk Assessment | Checkov + Conftest         | `.github/workflows/terraform-validation.yml`                     |
+| 3-3-1 Operations      | ArgoCD self-healing        | `gitops/argocd-apps/self-management/`                            |
+| 3-4-1 Access Control  | IRSA + Atlantis locks      | `terraform/modules/eks_gitops/`, `terraform/modules/atlantis/`   |
+| 3-5-1 Asset Inventory | Required tags policy       | `policies/conftest/terraform/required_tags.rego`                 |
+| 3-6-1 Data Encryption | SOPS + KMS                 | `gitops/sops/.sops.yaml`, `terraform/modules/secrets_sops/`      |
+| 3-7-1 Cloud Security  | Private EKS, VPC Flow Logs | `terraform/modules/eks_gitops/`, `terraform/modules/networking/` |
 
 Full mapping and evidence queries are in `docs/compliance/sama-mapping.md`.
 
@@ -700,6 +724,7 @@ Full mapping and evidence queries are in `docs/compliance/sama-mapping.md`.
 ### Adding a New Team to the Platform
 
 1. **Add team to `terraform.tfvars`**:
+
    ```hcl
    teams_list = ["backend", "data", "my-new-team"]
    source_repositories = {
@@ -708,6 +733,7 @@ Full mapping and evidence queries are in `docs/compliance/sama-mapping.md`.
    ```
 
 2. **Run Terraform**:
+
    ```bash
    make plan
    make apply
@@ -729,6 +755,7 @@ Full mapping and evidence queries are in `docs/compliance/sama-mapping.md`.
 ### Template Customization Guide
 
 Teams can fork `gitops/team-templates/standard-service/` and customize:
+
 - `deployment.yaml` — container image, resource limits, health checks
 - `service.yaml` — port configuration, annotations
 - `kustomization.yaml` — image tags, common labels, configmap generators
@@ -737,14 +764,14 @@ Teams can fork `gitops/team-templates/standard-service/` and customize:
 
 ## Roadmap
 
-| Quarter | Initiative | Status |
-|---------|-----------|--------|
-| Q1 2025 | Terraform Cloud/Enterprise integration | Planned |
-| Q2 2025 | Crossplane for multi-cloud GitOps | Planned |
-| Q2 2025 | Sentinel policy-as-code (HashiCorp) | Planned |
-| Q3 2025 | Automated cost anomaly detection in CI | Planned |
-| Q3 2025 | GitOps for databases (SchemaHero/Liquibase) | Planned |
-| Q4 2025 | AI-assisted drift explanation | Research |
+| Quarter | Initiative                                  | Status   |
+| ------- | ------------------------------------------- | -------- |
+| Q1 2025 | Terraform Cloud/Enterprise integration      | Planned  |
+| Q2 2025 | Crossplane for multi-cloud GitOps           | Planned  |
+| Q2 2025 | Sentinel policy-as-code (HashiCorp)         | Planned  |
+| Q3 2025 | Automated cost anomaly detection in CI      | Planned  |
+| Q3 2025 | GitOps for databases (SchemaHero/Liquibase) | Planned  |
+| Q4 2025 | AI-assisted drift explanation               | Research |
 
 The Terraform Cloud migration path is designed to be non-disruptive. Because all state is already in S3 with DynamoDB locking, migrating to Terraform Cloud simply requires updating the `backend` configuration block and re-running `terraform init`. The Atlantis integration supports Terraform Cloud/Enterprise as a backend provider with minimal configuration changes.
 
@@ -759,6 +786,7 @@ MIT License — See `LICENSE` for details.
 ## Contributing
 
 All contributions must pass:
+
 1. `terraform fmt`
 2. `tflint`
 3. `checkov`
