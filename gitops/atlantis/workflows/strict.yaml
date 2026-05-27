@@ -1,0 +1,12 @@
+workflow: strict
+plan:
+  steps:
+    - init
+    - plan:
+        extra_args: ["-lock=true", "-out=$PLANFILE"]
+    - run: conftest test $PLANFILE --policy ../policies/conftest/terraform
+    - run: checkov -f $PLANFILE --framework terraform_plan
+apply:
+  steps:
+    - apply:
+        extra_args: ["$PLANFILE"]

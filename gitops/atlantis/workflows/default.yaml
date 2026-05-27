@@ -1,0 +1,10 @@
+workflow: default
+plan:
+  steps:
+    - init
+    - plan:
+        extra_args: ["-lock=true"]
+    - run: conftest test $PLANFILE --policy ../policies/conftest/terraform
+apply:
+  steps:
+    - apply

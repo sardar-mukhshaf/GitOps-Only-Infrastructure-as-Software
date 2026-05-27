@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: atlantis
+  namespace: atlantis
+  annotations:
+    description: "Atlantis Terraform automation server with persistent plan storage"
+    managed-by: "gitops"
+spec:
+  serviceName: atlantis
+  replicas: 1
+  selector:
+    matchLabels:
+      app: atlantis
+  template:
+    metadata:
+      labels:
+        app: atlantis
+      annotations:
+        description: "Atlantis pod for Terraform plan/apply automation"
+        managed-by: "gitops"
+    spec:
+      serviceAccountName: atlantis
+      securityContext:
+        runAsNonRoot: true
+        fsGroup: 1000
+      containers:
+        - name: atlantis
+          image: ghcr.io/runatlantis/atlantis:v0.27.0
+          ports:
+            - containerPort: 4141
+              name: atlantis
+          env:
+            - name: ATLANTIS_PORT
+              value: "4141"
+            - name: ATLANTIS_ATLANTIS_URL
+              value: "https://atlantis.example.com"
+            - name: ATLANTIS_GH_USER
+              valueFrom:
+                secretKeyRef:
+                  name: atlantis-github-token
+                  key: username
+            - name: ATLANTIS_GH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: atlantis-github-token
+                  key: token
+            - name: ATLANTIS_REPO_ALLOWLIST
+              value: "github.com/my-org/*"
+            - name: ATLANTIS_DEFAULT_TF_VERSION
+              value: "1.7.0"
+          volumeMounts:
+            - name: atlantis-data
+              mountPath: /atlantis-data
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "2000m"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            runAsUser: 1000
+  volumeClaimTemplates:
+    - metadata:
+        name: atlantis-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: gp2
+        resources:
+          requests:
+            storage: 5Gi

@@ -1,0 +1,34 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: enforce-resource-descriptions
+  annotations:
+    policies.kyverno.io/title: "Enforce Resource Descriptions"
+    policies.kyverno.io/category: "Best Practices"
+    policies.kyverno.io/severity: "medium"
+    policies.kyverno.io/description: "metadata.annotations.description must exist and be longer than 10 characters"
+    policies.kyverno.io/minversion: "1.12.0"
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: check-description-length
+      match:
+        resources:
+          kinds:
+            - Deployment
+            - Service
+            - ConfigMap
+            - Ingress
+            - Secret
+      exclude:
+        resources:
+          namespaces:
+            - kube-system
+            - kyverno
+      validate:
+        message: "Resource must have metadata.annotations.description with at least 10 characters"
+        pattern:
+          metadata:
+            annotations:
+              description: "?*?*?*?*?*?*?*?*?*?*"

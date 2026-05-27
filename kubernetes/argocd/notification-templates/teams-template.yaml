@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-notifications-teams-cm
+  namespace: argocd
+  annotations:
+    description: "ArgoCD notification templates for Microsoft Teams"
+    managed-by: "gitops"
+data:
+  template.app-sync-failed-teams: |
+    message: |
+      {
+        "@type": "MessageCard",
+        "@context": "https://schema.org/extensions",
+        "themeColor": "FF0000",
+        "summary": "ArgoCD Sync Failed",
+        "sections": [
+          {
+            "activityTitle": "ArgoCD Sync Failed",
+            "facts": [
+              {"name": "Application:", "value": "{{.app.metadata.name}}"},
+              {"name": "Namespace:", "value": "{{.app.metadata.namespace}}"},
+              {"name": "Commit:", "value": "{{.app.status.sync.revision}}"},
+              {"name": "Error:", "value": "{{.app.status.operationState.syncResult.message}}"}
+            ]
+          }
+        ]
+      }
+  service.teams: |
+    webhookUrl: $teams-webhook-url

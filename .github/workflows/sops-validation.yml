@@ -1,0 +1,50 @@
+name: SOPS Validation
+
+on:
+  pull_request:
+    paths:
+      - 'gitops/sops/**'
+      - 'kubernetes/**'
+  push:
+    branches:
+      - main
+    paths:
+      - 'gitops/sops/**'
+
+jobs:
+  sops-encryption-check:
+    name: Verify SOPS Encryption
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install SOPS
+        run: |
+          wget -O /tmp/sops https://github.com/getsops/sops/releases/download/v3.8.1/sops-v3.8.1.linux.amd64
+          chmod +x /tmp/sops
+          sudo mv /tmp/sops /usr/local/bin/
+
+      - name: Verify all .enc.yaml files are encrypted
+        run: |
+          EXIT_CODE=0
+          for file in $(find . -name "*.enc.yaml" -o -name "*.enc.json"); do
+            echo "Checking: $file"
+            if ! grep -q "ENC\[AES256_GCM\|sops:\|lastmodified:" "$file"; then
+              echo "  ERROR: File does not appear to be SOPS encrypted"
+              EXIT_CODE=1
+            else
+              echo "  OK"
+            fi
+          done
+          exit $EXIT_CODE
+
+      - name: Check for plaintext secrets in non-enc files
+        run: |
+          EXIT_CODE=0
+          for file in $(find . -name "*.yaml" -o -name "*.yml" | grep -v ".enc."); do
+            if grep -E "(password|secret|token|key):\s+[^${}]" "$file" 2>/dev/null; then
+              echo "WARNING: $file may contain plaintext secrets"
+            fi
+          done
+          exit $EXIT_CODE

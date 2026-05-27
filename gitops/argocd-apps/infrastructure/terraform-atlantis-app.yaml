@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: atlantis
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/tracking-id: "platform:Application/atlantis"
+    description: "Atlantis Terraform automation server on EKS"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/my-org/gitops-platform.git
+    targetRevision: HEAD
+    path: kubernetes/atlantis
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: atlantis
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=true

@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kyverno-policies
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/tracking-id: "platform:Application/kyverno-policies"
+    description: "Kyverno policies managed by ArgoCD"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/my-org/gitops-platform.git
+    targetRevision: HEAD
+    path: kubernetes/kyverno/policies
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kyverno
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

@@ -1,0 +1,46 @@
+repos:
+  - id: github.com/my-org/infrastructure
+    apply_requirements: [approved, mergeable, undiverged]
+    plan_requirements: [approved, mergeable]
+    workflow: strict
+    allowed_overrides: [workflow]
+    allow_custom_workflows: false
+
+  - id: github.com/my-org/gitops-apps
+    apply_requirements: [approved, mergeable]
+    plan_requirements: [approved]
+    workflow: default
+    allowed_overrides: [apply_requirements]
+    allow_custom_workflows: false
+
+  - id: /.*/
+    apply_requirements: [approved, mergeable]
+    plan_requirements: [approved]
+    workflow: default
+    allowed_overrides: []
+    allow_custom_workflows: false
+
+workflows:
+  default:
+    plan:
+      steps:
+        - init
+        - plan:
+            extra_args: ["-lock=true"]
+        - run: conftest test $PLANFILE --policy ../policies/conftest/terraform
+    apply:
+      steps:
+        - apply
+
+  strict:
+    plan:
+      steps:
+        - init
+        - plan:
+            extra_args: ["-lock=true", "-out=$PLANFILE"]
+        - run: conftest test $PLANFILE --policy ../policies/conftest/terraform
+        - run: checkov -f $PLANFILE --framework terraform_plan
+    apply:
+      steps:
+        - apply:
+            extra_args: ["$PLANFILE"]

@@ -1,0 +1,38 @@
+name: Atlantis Webhook Validation
+
+on:
+  pull_request:
+    paths:
+      - 'gitops/atlantis/**'
+
+jobs:
+  validate-atlantis-config:
+    name: Validate Atlantis Configuration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate atlantis.yaml syntax
+        run: |
+          pip install pyyaml
+          python3 -c "import yaml; yaml.safe_load(open('gitops/atlantis/atlantis.yaml'))"
+          echo "atlantis.yaml is valid YAML"
+
+      - name: Validate repo-config.yaml syntax
+        run: |
+          python3 -c "import yaml; yaml.safe_load(open('gitops/atlantis/repo-config.yaml'))"
+          echo "repo-config.yaml is valid YAML"
+
+      - name: Check workflow files exist
+        run: |
+          test -f gitops/atlantis/workflows/default.yaml
+          test -f gitops/atlantis/workflows/strict.yaml
+          echo "All workflow files present"
+
+      - name: Validate workflow YAML
+        run: |
+          for f in gitops/atlantis/workflows/*.yaml; do
+            python3 -c "import yaml; yaml.safe_load(open('$f'))"
+            echo "$f is valid YAML"
+          done

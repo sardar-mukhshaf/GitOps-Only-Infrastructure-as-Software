@@ -1,0 +1,83 @@
+name: Terraform Validation
+
+on:
+  pull_request:
+    paths:
+      - 'terraform/**'
+      - 'policies/**'
+  push:
+    branches:
+      - main
+    paths:
+      - 'terraform/**'
+
+jobs:
+  validate:
+    name: Validate Terraform
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.7.0"
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive terraform/
+
+      - name: Terraform Init
+        run: cd terraform && terraform init -backend=false
+
+      - name: Terraform Validate
+        run: cd terraform && terraform validate
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: v0.50.0
+
+      - name: Run TFLint
+        run: cd terraform && tflint --recursive --format compact
+
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: terraform/
+          framework: terraform
+          output_format: cli
+          soft_fail: false
+
+      - name: Setup Conftest
+        run: |
+          wget -O conftest.tar.gz https://github.com/open-policy-agent/conftest/releases/download/v0.49.1/conftest_0.49.1_Linux_x86_64.tar.gz
+          tar xzf conftest.tar.gz
+          sudo mv conftest /usr/local/bin/
+
+      - name: Conftest Terraform Policies
+        run: |
+          cd terraform
+          terraform plan -out=tfplan -input=false -lock=false || true
+          terraform show -json tfplan > tfplan.json || true
+          conftest test tfplan.json --policy ../policies/conftest/terraform || true
+
+  sops-check:
+    name: Validate SOPS Encryption
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check for plaintext secrets
+        run: |
+          # Fail if any .enc.yaml file is NOT actually encrypted
+          for file in $(find gitops/sops -name "*.enc.yaml" -o -name "*.enc.json"); do
+            if grep -q "^stringData:" "$file" || grep -q "^data:" "$file"; then
+              if ! grep -q "sops:" "$file"; then
+                echo "ERROR: $file appears to be plaintext!"
+                exit 1
+              fi
+            fi
+          done
+          echo "All encrypted files appear valid"

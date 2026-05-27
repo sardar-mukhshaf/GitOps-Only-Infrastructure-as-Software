@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-notifications-cm
+  namespace: argocd
+  annotations:
+    description: "ArgoCD notification templates for Slack"
+    managed-by: "gitops"
+data:
+  template.app-sync-failed: |
+    message: |
+      :x: *ArgoCD Sync Failed*
+      Application: {{.app.metadata.name}}
+      Namespace: {{.app.metadata.namespace}}
+      Commit: {{.app.status.sync.revision}}
+      Error: {{.app.status.operationState.syncResult.message}}
+      Time: {{.app.status.operationState.finishedAt}}
+  template.app-sync-succeeded: |
+    message: |
+      :white_check_mark: *ArgoCD Sync Succeeded*
+      Application: {{.app.metadata.name}}
+      Commit: {{.app.status.sync.revision}}
+      Time: {{.app.status.operationState.finishedAt}}
+  template.app-drift-detected: |
+    message: |
+      :warning: *Drift Detected*
+      Application: {{.app.metadata.name}}
+      Differences: {{.app.status.sync.comparedTo.source.targetRevision}}
+  service.slack: |
+    token: $slack-token

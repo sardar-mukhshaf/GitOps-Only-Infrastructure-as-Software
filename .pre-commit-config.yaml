@@ -1,0 +1,35 @@
+repos:
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.86.0
+    hooks:
+      - id: terraform_fmt
+      - id: terraform_validate
+      - id: terraform_tflint
+        args:
+          - --args=--config=.tflint.hcl
+
+  - repo: https://github.com/bridgecrewio/checkov.git
+    rev: 3.1.70
+    hooks:
+      - id: checkov
+        args: ["--framework", "terraform", "--quiet", "--compact"]
+        files: ^terraform/
+
+  - repo: local
+    hooks:
+      - id: sops-encryption-check
+        name: SOPS Encryption Check
+        entry: scripts/sops-encryption-check.sh
+        language: script
+        files: gitops/sops/.*\.enc\.(yaml|json)$
+        pass_filenames: false
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        exclude: gitops/sops/.*\.enc\.yaml$
+      - id: check-json
+      - id: check-added-large-files

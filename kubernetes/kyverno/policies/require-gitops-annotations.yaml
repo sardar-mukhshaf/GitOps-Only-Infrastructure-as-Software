@@ -1,0 +1,31 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-gitops-annotations
+  annotations:
+    policies.kyverno.io/title: "Require GitOps Annotations"
+    policies.kyverno.io/category: "GitOps"
+    policies.kyverno.io/severity: "medium"
+    policies.kyverno.io/description: "Every Kubernetes resource must have argocd.argoproj.io/tracking-id annotation"
+    policies.kyverno.io/minversion: "1.12.0"
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: check-tracking-id
+      match:
+        resources:
+          kinds:
+            - "*"
+      exclude:
+        resources:
+          namespaces:
+            - kube-system
+            - kyverno
+            - argocd
+      validate:
+        message: "Every resource must have the argocd.argoproj.io/tracking-id annotation"
+        pattern:
+          metadata:
+            annotations:
+              argocd.argoproj.io/tracking-id: "?*"

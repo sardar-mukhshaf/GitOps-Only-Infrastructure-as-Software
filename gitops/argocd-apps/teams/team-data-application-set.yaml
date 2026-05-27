@@ -1,0 +1,41 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: team-data-apps
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/tracking-id: "platform:ApplicationSet/team-data-apps"
+    description: "ApplicationSet for data team services"
+spec:
+  generators:
+    - git:
+        repoURL: https://github.com/my-org/team-data.git
+        revision: HEAD
+        directories:
+          - path: "*/overlays/dev"
+          - path: "*/overlays/staging"
+          - path: "*/overlays/prod"
+  template:
+    metadata:
+      name: "{{path.basename}}-{{path[0]}}"
+      annotations:
+        argocd.argoproj.io/tracking-id: "data:Application/{{path.basename}}-{{path[0]}}"
+    spec:
+      project: data
+      source:
+        repoURL: https://github.com/my-org/team-data.git
+        targetRevision: HEAD
+        path: "{{path}}"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "{{path[0]}}"
+      syncPolicy:
+        automated:
+          selfHeal: true
+          prune: true
+        retry:
+          limit: 5
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 3m

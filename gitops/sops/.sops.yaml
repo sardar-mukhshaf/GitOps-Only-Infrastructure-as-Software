@@ -1,0 +1,15 @@
+creation_rules:
+  - path_regex: secrets/dev/.*\.enc\.yaml$
+    kms: arn:aws:kms:eu-west-1:123456789012:key/12345678-1234-1234-1234-123456789012
+    encrypted_regex: ^(data|stringData)$
+    shamir_threshold: 1
+
+  - path_regex: secrets/prod/.*\.enc\.yaml$
+    kms: arn:aws:kms:eu-west-1:123456789012:key/21098765-4321-4321-4321-210987654321
+    encrypted_regex: ^(data|stringData)$
+    shamir_threshold: 1
+
+  - path_regex: secrets/staging/.*\.enc\.yaml$
+    kms: arn:aws:kms:eu-west-1:123456789012:key/12345678-1234-1234-1234-123456789012
+    encrypted_regex: ^(data|stringData)$
+    shamir_threshold: 1
