@@ -1,4 +1,4 @@
-# GitOps-Only Infrastructure as Software
+# Thabit GitOps Control Plane
 
 > **Write Code ➔ Push to GitHub ➔ Auto-Deploy ➔ Never click around in AWS again.**
 
